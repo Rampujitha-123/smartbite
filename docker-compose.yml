@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  # 🧠 Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: smartbite_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: smartbite
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # ⚙️ Backend Service
+  backend:
+    build: ./backend
+    container_name: smartbite_backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/smartbite
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-your_openai_key_here}
+      PORT: 4000
+    command: sh -c "npx prisma migrate deploy && node src/server.js"
+
+  # 🌐 Frontend Service
+  frontend:
+    build: ./frontend
+    container_name: smartbite_frontend
+    restart: always
+    environment:
+      - VITE_API_URL=http://backend:4000/api
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
